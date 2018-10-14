@@ -1,8 +1,9 @@
 const crypto = require('crypto')
 const request = require('superagent')
-
+const debug = require('debug')('vinexpress')
 
 module.exports = (SECRET_KEY) => {
+  debug('Loading vinexpress with')
   function reqValidSignature (req) {
     //API calls using secret keys
     if (req.headers.authorization) {
@@ -14,12 +15,20 @@ module.exports = (SECRET_KEY) => {
         .update(req.rawBody + SECRET_KEY)
         .digest('hex')
 
+
       if(theirHash != ourHash) {
+        debug('Hashes do not match')
+        debug('req.rawBody', req.rawBody)
+        debug('Ours:   ' + ourHash)
+        debug('Theirs: ' + theirHash)
         return false
       }
       else {
         return true
       }
+    }
+    else {
+      debug('No authorization header present')
     }
 
     return false
@@ -27,13 +36,16 @@ module.exports = (SECRET_KEY) => {
 
   function rawBody (req, res, next) {
     if (req.get('Content-Type') == 'text/plain') {
+      debug('Content-Type is text/plain for rawBody')
       req.rawBody = req.body
     }
     else if (req.body) {
       try {
+        debug('JSON Stingifying body to create rawBody')
         req.rawBody = JSON.stringify(req.body)
       }
       catch (ex) {
+        debug('JSON stringify failed, setting rawBody = body')
         req.rawBody = req.body
       }
     }
@@ -66,16 +78,20 @@ module.exports = (SECRET_KEY) => {
   }
 
   function validSignature (req, res, next) {
-    console.log(`valid signa`)
+    debug('Validating signature')
     if (reqValidSignature(req, SECRET_KEY)) {
+      debug('Is valid signature')
       next()
     }
     else {
+      debug('Invalid signature')
       res.status(403).send('Access denied')
     }
   }
 
   function signedRequest (method, url, body, secretKey) {
+    debug('Body to submit', body)
+    debug('secretKey', secretKey)
     const hash = crypto.createHash('sha1')
       .update(JSON.stringify(body) + secretKey)
       .digest('hex')
