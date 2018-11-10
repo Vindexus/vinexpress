@@ -19,6 +19,7 @@ module.exports = (SECRET_KEY) => {
       if(theirHash != ourHash) {
         debug('Hashes do not match')
         debug('req.rawBody', req.rawBody)
+        debug('req.body', req.body)
         debug('Ours:   ' + ourHash)
         debug('Theirs: ' + theirHash)
         return false
@@ -32,6 +33,21 @@ module.exports = (SECRET_KEY) => {
     }
 
     return false
+  }
+
+  function textBody (req, res, next){
+    if (req.is('text/*')) {
+      req.text = ''
+      req.setEncoding('utf8')
+      req.on('data', function(chunk){ req.text += chunk })
+      req.on('end', () => {
+        req.body = req.text
+        req.rawBody = req.body
+        next()
+      });
+    } else {
+      next()
+    }
   }
 
   function rawBody (req, res, next) {
@@ -106,7 +122,8 @@ module.exports = (SECRET_KEY) => {
     middleware: {
       rawBody,
       validSignature,
-      setResponders
+      setResponders,
+      textBody
     },
     reqValidSignature,
     signedRequest
