@@ -118,12 +118,22 @@ module.exports = (SECRET_KEY) => {
       .set('Authorization', 'Signature ' + hash)
   }
 
+  function fromPromise (req, res, next) {
+    res.fromPromise = promise => {
+      return promise
+        .then(result => res.status(result.status).send(result.body))
+        .catch(err => res.status(err.status).send(err.body))
+    }
+    next()
+  }
+
   return {
     middleware: {
       rawBody,
       validSignature,
       setResponders,
-      textBody
+      textBody,
+      fromPromise
     },
     reqValidSignature,
     signedRequest
